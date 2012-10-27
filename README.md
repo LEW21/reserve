@@ -5,10 +5,8 @@ reserve is a **generic** Python server (and server library). It means it's able 
 
 Requirements:
 -------------
-- sdlaunch - reserve doesn't contain socket opening nor daemonizing code, it depends on sdlaunch for that
-           - (or alternatively you can use systemd socket activation)
-- fdsocket - python's sockets, when creating them from a file descriptor, require their user to provide
-           - some information unobtainable from Python, but easy to get from C. fdsocket provides that information.
+- sdlaunch - reserve doesn't contain socket opening nor daemonizing code, it depends on sdlaunch for that (or alternatively you can use systemd socket activation)
+- fdsocket - python's sockets, when creating them from a file descriptor, require their user to provide some information unobtainable from Python, but easy to get from C. fdsocket provides that information.
 
 Usage
 ------
