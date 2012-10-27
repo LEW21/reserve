@@ -7,13 +7,14 @@ Like the whole Python http module, it is not meant for use in production.
 You should serve your application as SCGI/FCGI/... instead and a real web server
 as a frontend.
 """
-__version__ = "0.1"
-__all__ = ["Handler"]
+__version__ = "0.2"
+__all__ = ["Handler", "launch"]
 
 from http.server import BaseHTTPRequestHandler
 import sys
 from platform import python_implementation
 from .cgi import Env
+from . import find_app
 
 server_version = "reserve/" + __version__
 sys_version = python_implementation() + "/" + sys.version.split()[0]
@@ -55,3 +56,6 @@ def Handler(app):
 			super().setup()
 
 	return SpecificHTTPRequestHandler
+
+def launch(args):
+	return Handler(find_app(args, 'reserve HTTP handler.', 'reserve.http app'))
