@@ -1,6 +1,6 @@
 """JSONS Handler
 """
-__version__ = "0.3"
+__version__ = "0.4"
 __all__ = ["Stream", "Handler", "launch"]
 
 from . import find_app
@@ -25,12 +25,12 @@ class Stream:
 		return next(self)
 
 def Handler(app):
-	def handle_request(socket, client_address, server):
+	def handle_jsons_request(socket, info):
 		with socket.makefile('rw') as stream:
 			stream = Stream(stream)
 			for message in stream:
 				stream.write(app(message))
-	return handle_request
+	return handle_jsons_request
 
 def launch(args):
 	return Handler(find_app(args, 'jsons handler.', 'reserve.jsons app'))

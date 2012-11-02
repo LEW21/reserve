@@ -29,44 +29,105 @@ Other CGI variables:
 - DOCUMENT_{PATH_INFO,NAME} - Apache-specific, rather undocumented and useless.
 """
 
+from .util import lazy
+from .server import ConnectionInfo, Address
+import socket
+
 class Env:
+	"""HTTP request metadata
+
+	API-compatible with ConnectionInfo.
+	"""
 	@classmethod
-	def from_headers(cls, headers, server_vars):
+	def from_headers(cls, headers, info):
 		env = cls()
-		env._headers = headers
-		env._server = server_vars
+		env.headers = headers
+		env.info = info
 		return env
 
 	@classmethod
 	def from_vars(cls, vars):
 		env = cls()
-		env._vars = fix_path_vars(vars)
+		env.vars = fix_path_vars(vars)
 		return env
 
-	@property
+	@lazy
 	def headers(self):
-		try:
-			return self._headers
-		except:
-			self._headers = request_vars_to_headers(self.vars)
-			return self._headers
+		return request_vars_to_headers(self.vars)
 
-	@property
-	def vars(self):
-		try:
-			return self._vars
-		except:
-			self._vars = headers_to_request_vars(self._headers)
-			self._vars.update(self._server)
-			fix_path_vars(self._vars)
-			return self._vars
+	@lazy
+	def info(self):
+		return connection_vars_to_info(self.vars)
 
 	@property
 	def server(self):
-		try:
-			return self._server
-		except:
-			return self.vars
+		return self.info.server
+
+	@property
+	def remote(self):
+		return self.info.remote
+
+	@lazy
+	def vars(self):
+		vars = headers_to_request_vars(self.headers)
+		vars.update(connection_info_to_vars(self.info))
+		fix_path_vars(vars)
+		return vars
+
+def connection_info_to_vars(info):
+	vars = {}
+
+	for name, value in info.server.__dict__.items():
+		if name != "addr":
+			vars["SERVER_" + name.upper()] = value
+
+	for name, value in info.remote.__dict__.items():
+		if name != "addr":
+			vars["REMOTE_" + name.upper()] = value
+
+	try:
+		addr = info.server.addr
+		vars['SERVER_ADDR'] = addr.addr
+		vars['SERVER_PORT'] = addr.port
+
+		# Don't make potentially useless reverse dns lookup
+		# Pass the host only if it's already known.
+		if 'host' in addr.__dict__:
+			vars['SERVER_HOST'] = addr.host
+	except:
+		pass
+
+	try:
+		addr = info.remote.addr
+		vars['REMOTE_ADDR'] = addr.addr
+		vars['REMOTE_PORT'] = addr.port
+
+		# Don't make potentially useless reverse dns lookup
+		# Pass the host only if it's already known.
+		if 'host' in addr.__dict__:
+			vars['REMOTE_HOST'] = addr.host
+	except:
+		pass
+	return vars
+
+def connection_vars_to_info(vars):
+	c = ConnectionInfo()
+	c.server.addr = Address(socket.AF_INET6 if ":" in vars["SERVER_ADDR"] else socket.AF_INET, (vars["SERVER_ADDR"], vars["SERVER_PORT"]), vars.get("SERVER_HOST"))
+	c.remote.addr = Address(socket.AF_INET6 if ":" in vars["REMOTE_ADDR"] else socket.AF_INET, (vars["REMOTE_ADDR"], vars["REMOTE_PORT"]), vars.get("REMOTE_HOST"))
+
+	for name, value in vars.items():
+
+		if name.startswith("SERVER_"):
+			name = name[len("SERVER_"):].lower()
+			if name not in ("addr", "port", "host"):
+				setattr(c.server, name, value)
+
+		if name.startswith("REMOTE_"):
+			name = name[len("REMOTE_"):].lower()
+			if name not in ("addr", "port", "host"):
+				setattr(c.server, name, value)
+
+	return c
 
 autoconv_table = [
 	(":method", "REQUEST_METHOD"),
