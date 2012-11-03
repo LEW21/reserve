@@ -25,11 +25,11 @@ class Stream:
 		return next(self)
 
 def Handler(app):
-	def handle_jsons_request(socket, info):
-		with socket.makefile('rw') as stream:
-			stream = Stream(stream)
-			for message in stream:
-				stream.write(app(message))
+	def handle_jsons_request(input, output, err, info):
+		sin = Stream(input)
+		sout = Stream(output)
+		for message in sin:
+			sout.write(app(message))
 	return handle_jsons_request
 
 def launch(args):

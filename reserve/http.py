@@ -12,18 +12,28 @@ __all__ = ["Handler", "launch"]
 
 from http.server import BaseHTTPRequestHandler
 import sys
-from platform import python_implementation
 from .cgi import Env
-from .util import lazy
 from . import find_app
 
-class HTTPRequestHandler(BaseHTTPRequestHandler):
-	def __init__(self, socket, info):
-		self.server_version = info.server.software
-		self.socket = socket
+class CivilizedBaseRequestHandler:
+	def __init__(self, input, output, err, info):
+		self.input = input
+		self.output = output
+		self.err = err
 		self.info = info
-		super().__init__(socket, info.remote.addr, info.server)
 
+		self.server_version = info.server.software
+		super().__init__(info.socket, info.remote.addr, info.server)
+
+	def setup(self):
+		self.connection = self.request
+		self.rfile = self.input.buffer
+		self.wfile = self.output.buffer
+
+	def finish(self):
+		pass
+
+class HTTPRequestHandler(CivilizedBaseRequestHandler, BaseHTTPRequestHandler):
 	def parse_request(self):
 		ret = super().parse_request()
 		self.headers[":method"]  = self.command
@@ -33,7 +43,8 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 		self.headers[":scheme"]  = "http"
 		return ret
 
-	def get_environ(self):
+	@property
+	def environ(self):
 		return Env.from_headers(self.headers, self.info)
 
 	def handle(self):
@@ -44,7 +55,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 		if not self.parse_request(): # An error code has been sent, just exit
 			return
 
-		self.app(self.rfile, self.wfile, sys.stderr, self.get_environ())
+		self.app(self.input, self.output, self.err, self.environ)
 
 def Handler(app):
 	class handle_http_request(HTTPRequestHandler):

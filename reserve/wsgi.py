@@ -10,8 +10,8 @@ from wsgiref.handlers import SimpleHandler
 from . import find_app
 
 def Handler(app):
-	def handle_wsgi_request(stdin, stderr, stdout, environ):
-		handler = SimpleHandler(stdin, stderr, stdout, environ.vars, environ.server.multithread, environ.server.multiprocess)
+	def handle_wsgi_request(stdin, stdout, stderr, environ):
+		handler = SimpleHandler(stdin.buffer, stdout.buffer, stderr, environ.vars, environ.server.multithread, environ.server.multiprocess)
 		handler.run_once = not environ.server.multiconnection
 		handler.server_software = environ.server.software
 		handler.run(app)

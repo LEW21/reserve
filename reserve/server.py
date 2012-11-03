@@ -3,6 +3,7 @@ __all__ = ['TCPServer', 'UDPServer', 'ConnectionInfo', 'ServerInfo', 'RemoteInfo
 
 import socket
 import socketserver
+import sys
 from .util import lazy
 
 def server_from_fd(fd, server, handler):
@@ -80,7 +81,11 @@ def socketserverRequestHandler(app):
 		c.server.addr = LazyAddress(socket.family, lambda: socket.getsockname())
 		c.remote.addr = Address(socket.family, client_address)
 
-		app(socket, c)
+		c.socket = socket
+
+		with socket.makefile('r') as input:
+			with socket.makefile('w') as output:
+				app(input, output, sys.stderr, c)
 
 	return handle_request
 
